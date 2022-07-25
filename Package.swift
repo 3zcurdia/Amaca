@@ -9,7 +9,7 @@ let package = Package(
         .macOS(.v12),
         .iOS(.v15),
         .tvOS(.v15),
-        .watchOS(.v6)
+        .watchOS(.v8)
     ],
     products: [
         .library(name: "Amaca", targets: ["Amaca"])
