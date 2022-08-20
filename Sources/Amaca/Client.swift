@@ -18,6 +18,7 @@ extension Amaca {
     public struct Client {
         let baseUrl: String
         let session: URLSession
+        public var cacheDelegate: CacheResponseDelegate?
         var contentMode = Request.ContentMode.json
 
         public init(_ baseUrl: String, session: URLSession = URLSession.shared) {
@@ -61,6 +62,10 @@ extension Amaca {
         }
 
         public func request(_ req: URLRequest) async throws -> Data? {
+            cacheDelegate?.willMakeRequest(urlRequest: req)
+            if let data = cacheDelegate?.fetchCachedRequest(urlRequest: req) {
+                return data
+            }
             let (data, response) = try await session.data(for: req)
 
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -69,12 +74,16 @@ extension Amaca {
 
             switch StatusCode(rawValue: httpResponse.statusCode) {
             case .success:
+                cacheDelegate?.didFinishRequestSuccessful(data: data)
                 return data
             case .clientError:
+                cacheDelegate?.didFinishRequestUnsuccessful(urlRequest: req, data: data)
                 throw NetworkError.clientError("Client error code: \(httpResponse.statusCode)")
             case .serverError:
+                cacheDelegate?.didFinishRequestUnsuccessful(urlRequest: req, data: data)
                 throw NetworkError.serverError("Server error code: \(httpResponse.statusCode)")
             default:
+                cacheDelegate?.didFinishRequestUnsuccessful(urlRequest: req, data: data)
                 #if DEBUG
                 debugPrint(httpResponse)
                 debugPrint(data)
