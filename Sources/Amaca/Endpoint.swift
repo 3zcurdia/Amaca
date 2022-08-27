@@ -12,7 +12,7 @@ extension Amaca {
         case invalidEncoding(String)
         case invalidDecoding(String)
     }
-    enum ContentMode {
+    public enum ContentMode {
         case json
 
         func headers() -> [String: String] {

@@ -22,41 +22,41 @@ extension Amaca {
         let session: URLSession
         public var cacheDelegate: CacheResponseDelegate?
 
-        init(_ baseUrl: String, auth: Authenticable? = nil, defaultHeaders: [String: String] = [:], session: URLSession = URLSession.shared) {
+        public init(_ baseUrl: String, auth: Authenticable? = nil, defaultHeaders: [String: String] = [:], session: URLSession = URLSession.shared) {
             self.baseUrl = baseUrl
             self.session = session
             self.auth = auth
             self.defaultHeaders = defaultHeaders
         }
 
-        func get(path: String = "/",
+        public func get(path: String = "/",
                  queryItems: [String: String] = [:],
                  headers: [String: String] = [:]) async throws -> Data? {
             return try await request(method: "get", path: path, queryItems: queryItems, headers: headers)
         }
 
-        func post(path: String = "/",
+        public func post(path: String = "/",
                   queryItems: [String: String] = [:],
                   headers: [String: String] = [:],
                   body: Data? = nil) async throws -> Data? {
             return try await request(method: "post", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
-        func put(path: String = "/",
+        public func put(path: String = "/",
                  queryItems: [String: String] = [:],
                  headers: [String: String] = [:],
                  body: Data? = nil) async throws -> Data? {
             return try await request(method: "put", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
-        func patch(path: String = "/",
+        public func patch(path: String = "/",
                    queryItems: [String: String] = [:],
                    headers: [String: String] = [:],
                    body: Data? = nil) async throws -> Data? {
             return try await request(method: "patch", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
-        func delete(path: String = "/",
+        public func delete(path: String = "/",
                     queryItems: [String: String] = [:],
                     headers: [String: String] = [:]) async throws -> Data? {
             return try await request(method: "delete", path: path, queryItems: queryItems, headers: headers)
@@ -91,7 +91,7 @@ extension Amaca {
             return try await request(method: method, url: url, headers: headers, body: body)
         }
 
-        func request(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) async throws -> Data? {
+        public func request(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) async throws -> Data? {
             var urlRequest = URLRequest(url: url)
             urlRequest.httpMethod = method
             if let body = body {
@@ -110,7 +110,7 @@ extension Amaca {
             return try await request(urlRequest: urlRequest)
         }
 
-        func request(urlRequest: URLRequest) async throws -> Data? {
+        public func request(urlRequest: URLRequest) async throws -> Data? {
             cacheDelegate?.willMakeRequest(urlRequest: urlRequest)
             if let cachedData = cacheDelegate?.fetchCachedRequest(urlRequest: urlRequest) {
                 return cachedData
