@@ -17,14 +17,15 @@ extension Amaca {
 
     public struct Client {
         let baseUrl: String
-        public var auth: Authenticable?
+        let auth: Authenticable?
         public var defaultHeaders: [String: String]
         let session: URLSession
         public var cacheDelegate: CacheResponseDelegate?
 
-        init(_ baseUrl: String, defaultHeaders: [String: String] = [:], session: URLSession = URLSession.shared) {
+        init(_ baseUrl: String, auth: Authenticable? = nil, defaultHeaders: [String: String] = [:], session: URLSession = URLSession.shared) {
             self.baseUrl = baseUrl
             self.session = session
+            self.auth = auth
             self.defaultHeaders = defaultHeaders
         }
 
@@ -87,11 +88,12 @@ extension Amaca {
                 throw NetworkError.invalidRequest("URL invalid for '\(baseUrl)' with method '\(method)' and path '\(path)'")
             }
 
-            return try await request(url: url, headers: headers, body: body)
+            return try await request(method: method, url: url, headers: headers, body: body)
         }
 
-        func request(url: URL, headers: [String: String] = [:], body: Data? = nil) async throws -> Data? {
+        func request(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) async throws -> Data? {
             var urlRequest = URLRequest(url: url)
+            urlRequest.httpMethod = method
             if let body = body {
                 urlRequest.httpBody = body
             }
