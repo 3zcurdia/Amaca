@@ -15,7 +15,7 @@ extension Amaca {
     enum ContentMode {
         case json
 
-        func headers() -> [String:String] {
+        func headers() -> [String: String] {
             switch self {
             case .json:
                 return [
@@ -27,14 +27,15 @@ extension Amaca {
     }
 
     public struct Endpoint<T> where T: Codable, T: Identifiable {
-        var client: Client
+        let client: Client
         let route: String
         public var encoder: JSONEncoder
         public var decoder: JSONDecoder
 
         public init(client: Client, route: String) {
-            self.client = client
-            self.client.defaultHeaders.merge(ContentMode.json.headers()) { (_current, other) in other }
+            var tmpclt = client
+            tmpclt.defaultHeaders.merge(ContentMode.json.headers()) { (_, other) in other }
+            self.client = tmpclt
             self.route = route
             self.encoder = JSONEncoder()
             self.encoder.keyEncodingStrategy = .convertToSnakeCase

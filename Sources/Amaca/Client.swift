@@ -70,8 +70,8 @@ extension Amaca {
                 throw NetworkError.invalidRequest("URL invalid for: \(baseUrl)")
             }
             urlComponents.path = path
-            
-            var query : [URLQueryItem] = []
+
+            var query: [URLQueryItem] = []
             queryItems.forEach { (key, value) in
                 query.append(URLQueryItem(name: key, value: value))
             }
