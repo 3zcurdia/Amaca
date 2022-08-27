@@ -12,28 +12,38 @@ extension Amaca {
         case invalidEncoding(String)
         case invalidDecoding(String)
     }
+    enum ContentMode {
+        case json
+
+        func headers() -> [String:String] {
+            switch self {
+            case .json:
+                return [
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                ]
+            }
+        }
+    }
 
     public struct Endpoint<T> where T: Codable, T: Identifiable {
-        let client: Client
+        var client: Client
         let route: String
-        let auth: Authenticable?
         public var encoder: JSONEncoder
         public var decoder: JSONDecoder
 
-        public init(client: Client, route: String, auth: Authenticable? =  nil) {
+        public init(client: Client, route: String) {
             self.client = client
+            self.client.defaultHeaders.merge(ContentMode.json.headers()) { (_current, other) in other }
             self.route = route
-            self.auth = auth
             self.encoder = JSONEncoder()
             self.encoder.keyEncodingStrategy = .convertToSnakeCase
             self.decoder = JSONDecoder()
             self.decoder.keyDecodingStrategy = .convertFromSnakeCase
         }
 
-        public func show(params: [String: String]? = nil) async throws -> [T] {
-            var query = params ?? [:]
-            query.merge(auth?.queryItems() ?? [:]) { (_, other) in other }
-            let data = try await client.get(path: route, queryItems: query, headers: auth?.headers())
+        public func show(params: [String: String] = [:]) async throws -> [T] {
+            let data = try await client.get(path: route, queryItems: params)
             guard let data = data else { return [] }
 
             do {
@@ -48,10 +58,8 @@ extension Amaca {
             }
         }
 
-        public func show(_ model: T, params: [String: String]? = nil) async throws -> T? {
-            var query = params ?? [:]
-            query.merge(auth?.queryItems() ?? [:]) { (_, other) in other }
-            let data = try await client.get(path: "\(route)/\(model.id)", queryItems: query, headers: auth?.headers())
+        public func show(_ model: T, params: [String: String] = [:]) async throws -> T? {
+            let data = try await client.get(path: "\(route)/\(model.id)", queryItems: params)
             guard let data = data else { return nil }
 
             do {
@@ -66,7 +74,7 @@ extension Amaca {
             }
         }
 
-        public func create(_ model: T, params: [String: String]? = nil) async throws -> T? {
+        public func create(_ model: T, params: [String: String] = [:]) async throws -> T? {
             var body: Data?
             do {
                 body = try encoder.encode(model)
@@ -76,9 +84,7 @@ extension Amaca {
                 #endif
                 throw EndpointError.invalidEncoding("Unable to encode request")
             }
-            var query = params ?? [:]
-            query.merge(auth?.queryItems() ?? [:]) { (_, other) in other }
-            let data = try await client.post(path: route, body: body, queryItems: query, headers: auth?.headers())
+            let data = try await client.post(path: route, queryItems: params, body: body)
             guard let data = data else { return nil }
 
             do {
@@ -93,7 +99,7 @@ extension Amaca {
             }
         }
 
-        public func update(_ model: T, params: [String: String]? = nil) async throws -> T? {
+        public func update(_ model: T, params: [String: String] = [:]) async throws -> T? {
             var body: Data?
             do {
                 body = try encoder.encode(model)
@@ -103,9 +109,7 @@ extension Amaca {
                 #endif
                 throw EndpointError.invalidEncoding("Unable to encode request")
             }
-            var query = params ?? [:]
-            query.merge(auth?.queryItems() ?? [:]) { (_, other) in other }
-            let data = try await client.patch(path: "\(route)/\(model.id)", body: body, queryItems: query, headers: auth?.headers())
+            let data = try await client.patch(path: "\(route)/\(model.id)", queryItems: params, body: body)
             guard let data = data else { return nil }
 
             do {
@@ -120,10 +124,8 @@ extension Amaca {
             }
         }
 
-        public func destroy(_ model: T, params: [String: String]? = nil) async throws -> T? {
-            var query = params ?? [:]
-            query.merge(auth?.queryItems() ?? [:]) { (_, other) in other }
-            let data = try await client.delete(path: "\(route)/\(model.id)", queryItems: query, headers: auth?.headers())
+        public func destroy(_ model: T, params: [String: String] = [:]) async throws -> T? {
+            let data = try await client.delete(path: "\(route)/\(model.id)", queryItems: params)
             guard let data = data else { return nil }
 
             do {
