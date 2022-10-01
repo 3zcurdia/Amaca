@@ -26,7 +26,9 @@ extension Amaca {
             self.baseUrl = baseUrl
             self.session = session
             self.auth = auth
-            self.defaultHeaders = defaultHeaders
+            var headers = defaultHeaders
+            headers.merge(["Accept": "application/json", "Content-Type": "application/json"]) { (_, new) in new }
+            self.defaultHeaders = headers
         }
 
         public func get(path: String = "/",
