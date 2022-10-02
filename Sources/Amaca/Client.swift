@@ -27,7 +27,7 @@ extension Amaca {
             self.session = session
             self.auth = auth
             var headers = defaultHeaders
-            headers.merge(["Accept": "application/json", "Content-Type": "application/json"]) { (_, new) in new }
+            headers.merge(["Accept": "application/json", "Content-type": "application/json"]) { (current, _) in current }
             self.defaultHeaders = headers
         }
 
