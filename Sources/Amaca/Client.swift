@@ -26,9 +26,7 @@ extension Amaca {
             self.baseUrl = baseUrl
             self.session = session
             self.auth = auth
-            var headers = defaultHeaders
-            headers.merge(["Accept": "application/json", "Content-type": "application/json"]) { (current, _) in current }
-            self.defaultHeaders = headers
+            self.defaultHeaders = defaultHeaders
         }
 
         public func get(path: String = "/",
@@ -100,13 +98,13 @@ extension Amaca {
                 urlRequest.httpBody = body
             }
             defaultHeaders.forEach { (key, value) in
-                urlRequest.setValue(key, forHTTPHeaderField: value)
+                urlRequest.setValue(value, forHTTPHeaderField: key)
             }
             headers.forEach { (key, value) in
-                urlRequest.setValue(key, forHTTPHeaderField: value)
+                urlRequest.setValue(value, forHTTPHeaderField: key)
             }
             auth?.headers().forEach { (key, value) in
-                urlRequest.setValue(key, forHTTPHeaderField: value)
+                urlRequest.setValue(value, forHTTPHeaderField: key)
             }
 
             return try await request(urlRequest: urlRequest)
