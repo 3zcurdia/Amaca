@@ -19,7 +19,7 @@ final class AmacaTests: XCTestCase {
     func testClientRequestRnM() async {
         let apiClient = Amaca.Client("https://rickandmortyapi.com/")
         let endpoint = Amaca.Endpoint<Character>(client: apiClient, route: "/api/character/")
-        let result = try! await endpoint.show(Character(id: 1, name: ""))
+        let result = try! await endpoint.show("1")
         XCTAssertEqual("Rick Sanchez", result!.name)
     }
 }
