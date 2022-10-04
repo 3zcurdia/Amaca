@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 extension Amaca {
     public enum NetworkError: Error {
@@ -35,11 +36,24 @@ extension Amaca {
             return try await request(method: "get", path: path, queryItems: queryItems, headers: headers)
         }
 
+        public func getPublisher(path: String = "/",
+                 queryItems: [String: String] = [:],
+                 headers: [String: String] = [:]) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(method: "get", path: path, queryItems: queryItems, headers: headers)
+        }
+
         public func post(path: String = "/",
                   queryItems: [String: String] = [:],
                   headers: [String: String] = [:],
                   body: Data? = nil) async throws -> Data? {
             return try await request(method: "post", path: path, queryItems: queryItems, headers: headers, body: body)
+        }
+
+        public func postPublisher(path: String = "/",
+                  queryItems: [String: String] = [:],
+                  headers: [String: String] = [:],
+                  body: Data? = nil) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(method: "post", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
         public func put(path: String = "/",
@@ -49,11 +63,25 @@ extension Amaca {
             return try await request(method: "put", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
+        public func putPublisher(path: String = "/",
+                 queryItems: [String: String] = [:],
+                 headers: [String: String] = [:],
+                 body: Data? = nil) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(method: "put", path: path, queryItems: queryItems, headers: headers, body: body)
+        }
+
         public func patch(path: String = "/",
                    queryItems: [String: String] = [:],
                    headers: [String: String] = [:],
                    body: Data? = nil) async throws -> Data? {
             return try await request(method: "patch", path: path, queryItems: queryItems, headers: headers, body: body)
+        }
+
+        public func patchPublisher(path: String = "/",
+                   queryItems: [String: String] = [:],
+                   headers: [String: String] = [:],
+                   body: Data? = nil) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(method: "patch", path: path, queryItems: queryItems, headers: headers, body: body)
         }
 
         public func delete(path: String = "/",
@@ -62,11 +90,33 @@ extension Amaca {
             return try await request(method: "delete", path: path, queryItems: queryItems, headers: headers)
         }
 
+        public func deletePublisher(path: String = "/",
+                    queryItems: [String: String] = [:],
+                    headers: [String: String] = [:]) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(method: "delete", path: path, queryItems: queryItems, headers: headers)
+        }
+
+        func requestPublisher(method: String,
+                     path: String,
+                     queryItems: [String: String] = [:],
+                     headers: [String: String] = [:],
+                     body: Data? = nil) -> AnyPublisher<Data, URLError> {
+            guard let url = try? buildUrl(method: method, path: path, queryItems: queryItems) else {
+                return Fail(error: URLError(.badURL)).eraseToAnyPublisher()
+            }
+            return requestPublisher(method: method, url: url, headers: headers, body: body)
+        }
+
         func request(method: String,
                      path: String,
                      queryItems: [String: String] = [:],
                      headers: [String: String] = [:],
                      body: Data? = nil) async throws -> Data? {
+            let url = try buildUrl(method: method, path: path, queryItems: queryItems)
+            return try await request(method: method, url: url, headers: headers, body: body)
+        }
+
+        private func buildUrl(method: String, path: String, queryItems: [String: String] = [:]) throws -> URL {
             guard var urlComponents = URLComponents(string: baseUrl) else {
                 throw NetworkError.invalidRequest("URL invalid for: \(baseUrl)")
             }
@@ -78,20 +128,26 @@ extension Amaca {
             }
 
             if let queryAuth = auth?.queryItems() {
-                queryAuth.forEach { (key, value) in
-                    query.append(URLQueryItem(name: key, value: value))
-                }
+                queryAuth.forEach { query.append(URLQueryItem(name: $0, value: $1)) }
             }
             urlComponents.queryItems = query
 
-            guard let url = urlComponents.url else {
+            if let url = urlComponents.url {
+                return url
+            } else {
                 throw NetworkError.invalidRequest("URL invalid for '\(baseUrl)' with method '\(method)' and path '\(path)'")
             }
+        }
 
-            return try await request(method: method, url: url, headers: headers, body: body)
+        public func requestPublisher(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) -> AnyPublisher<Data, URLError> {
+            return requestPublisher(for: buildRequest(method: method, url: url, headers: headers, body: body))
         }
 
         public func request(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) async throws -> Data? {
+            return try await request(urlRequest: buildRequest(method: method, url: url, headers: headers, body: body))
+        }
+
+        private func buildRequest(method: String, url: URL, headers: [String: String] = [:], body: Data? = nil) -> URLRequest {
             var urlRequest = URLRequest(url: url)
             urlRequest.httpMethod = method
             if let body = body {
@@ -106,8 +162,29 @@ extension Amaca {
             auth?.headers().forEach { (key, value) in
                 urlRequest.setValue(value, forHTTPHeaderField: key)
             }
+            return urlRequest
+        }
 
-            return try await request(urlRequest: urlRequest)
+        public func requestPublisher(for urlRequest: URLRequest) -> AnyPublisher<Data, URLError> {
+            return URLSession
+                .shared
+                .dataTaskPublisher(for: urlRequest)
+                .map { (data, response) in
+                    let httpResponse = response as! HTTPURLResponse
+
+                    if StatusCode(rawValue: httpResponse.statusCode) == .success {
+                        cacheDelegate?.didFinishRequestSuccessful(data: data)
+                    } else {
+                        cacheDelegate?.didFinishRequestUnsuccessful(urlRequest: urlRequest, data: data)
+                        #if DEBUG
+                        debugPrint(httpResponse)
+                        debugPrint(data)
+                        #endif
+                    }
+                    return data
+
+                }
+                .eraseToAnyPublisher()
         }
 
         public func request(urlRequest: URLRequest) async throws -> Data? {

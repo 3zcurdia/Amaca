@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 extension Amaca {
     public enum EndpointError: Error {
@@ -59,8 +60,15 @@ extension Amaca {
             }
         }
 
-        public func show(_ model: T, params: [String: String] = [:]) async throws -> T? {
-            let data = try await client.get(path: "\(route)/\(model.id)", queryItems: params)
+        public func showPublisher(params: [String: String] = [:]) -> AnyPublisher<[T], Error> {
+            client
+                .getPublisher(path: route, queryItems: params)
+                .decode(type: [T].self, decoder: decoder)
+                .eraseToAnyPublisher()
+        }
+
+        public func show(_ id: String, params: [String: String] = [:]) async throws -> T? {
+            let data = try await client.get(path: "\(route)/\(id)", queryItems: params)
             guard let data = data else { return nil }
 
             do {
@@ -73,6 +81,13 @@ extension Amaca {
                 #endif
                 throw EndpointError.invalidDecoding("Unable to decode response")
             }
+        }
+
+        public func showPublisher(_ id: String, params: [String: String] = [:]) -> AnyPublisher<T, Error> {
+            client
+                .getPublisher(path: "\(route)/\(id)", queryItems: params)
+                .decode(type: T.self, decoder: decoder)
+                .eraseToAnyPublisher()
         }
 
         public func create(_ model: T, params: [String: String] = [:]) async throws -> T? {
@@ -100,6 +115,23 @@ extension Amaca {
             }
         }
 
+        public func createPublisher(_ model: T, params: [String: String] = [:]) -> AnyPublisher<T, Error> {
+            var body: Data?
+            do {
+                body = try encoder.encode(model)
+            } catch let err {
+                #if DEBUG
+                debugPrint(err)
+                #endif
+                return Fail(error: EndpointError.invalidEncoding("Unable to encode request")).eraseToAnyPublisher()
+            }
+
+            return client
+                .postPublisher(path: route, queryItems: params, body: body)
+                .decode(type: T.self, decoder: decoder)
+                .eraseToAnyPublisher()
+        }
+
         public func update(_ model: T, params: [String: String] = [:]) async throws -> T? {
             var body: Data?
             do {
@@ -125,6 +157,23 @@ extension Amaca {
             }
         }
 
+        public func updatePublisher(_ model: T, params: [String: String] = [:]) -> AnyPublisher<T, Error> {
+            var body: Data?
+            do {
+                body = try encoder.encode(model)
+            } catch let err {
+                #if DEBUG
+                debugPrint(err)
+                #endif
+                return Fail(error: EndpointError.invalidEncoding("Unable to encode request")).eraseToAnyPublisher()
+            }
+
+            return client
+                .patchPublisher(path: route, queryItems: params, body: body)
+                .decode(type: T.self, decoder: decoder)
+                .eraseToAnyPublisher()
+        }
+
         public func destroy(_ model: T, params: [String: String] = [:]) async throws -> T? {
             let data = try await client.delete(path: "\(route)/\(model.id)", queryItems: params)
             guard let data = data else { return nil }
@@ -139,6 +188,13 @@ extension Amaca {
                 #endif
                 throw EndpointError.invalidDecoding("Unable to decode response")
             }
+        }
+
+        public func destroyPublisher(_ model: T, params: [String: String] = [:]) -> AnyPublisher<T, Error> {
+            return client
+                .deletePublisher(path: "\(route)/\(model.id)", queryItems: params)
+                .decode(type: T.self, decoder: decoder)
+                .eraseToAnyPublisher()
         }
     }
 }
